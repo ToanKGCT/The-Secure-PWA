@@ -7,7 +7,6 @@ import re
 
 app = Flask(__name__)
 
-
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def addFeedback():
     if request.method == "POST":
