@@ -49,11 +49,10 @@ def retrieveUsers(username, password, email):
     return False
 
 
-def insertFeedback(feedback, username):
+def insertFeedback(feedback):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
-    sanitized_feedback = html.escape(feedback)  # Escape harmful content
-    cur.execute("INSERT INTO feedback (feedback, username) VALUES (?, ?)", (sanitized_feedback, username))
+    cur.execute("INSERT INTO feedback (feedback) VALUES (?)", (feedback,))
     con.commit()
     con.close()
 
@@ -62,11 +61,12 @@ def listFeedback():
     cur = con.cursor()
     data = cur.execute("SELECT * FROM feedback").fetchall()
     con.close()
-    feedback_list = []
-    for row in data:
-        escaped_feedback = html.escape(row[1])  # Escape feedback content
-        feedback_list.append(escaped_feedback)
-    return feedback_list
+    with open("templates/partials/success_feedback.html", "w") as f:
+        for row in data:
+            escaped_feedback = html.escape(row[1])  # Escape feedback content
+            f.write("<p>\n")
+            f.write(f"{escaped_feedback}\n")
+            f.write("</p>\n")
 
 def isUserExists(username, email):
     con = sql.connect("database_files/database.db")
@@ -76,4 +76,3 @@ def isUserExists(username, email):
     user = cur.fetchone()
     con.close()
     return user is not None
-

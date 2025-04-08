@@ -1,40 +1,55 @@
 from flask import Flask, render_template, request, redirect, session
 from flask_wtf.csrf import CSRFProtect
+from flask import render_template
+from flask import request
+from flask import redirect
 import user_management as dbHandler
 import re
 
+# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = "your_secret_key"
+
+# Set a secret key for sessions
+app.secret_key = "your_secret_key_here"
 
 # Enable CSRF protection
 csrf = CSRFProtect(app)
 
-@app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-@app.route("/", methods=["POST", "GET"])
-def home():
-    if request.method == "GET":
-        # Check if the user is already logged in
-        if "username" in session:
-            dbHandler.listFeedback()
-            return render_template("/success.html", value=session["username"], state=True)
-        return render_template("/index.html")
+@app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
+def addFeedback():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        email = request.form["email"]
+        feedback = request.form["feedback"]
+        # Validate feedback
+        if len(feedback) > 500:
+            return "Invalid feedback", 400
+        dbHandler.insertFeedback(feedback)
+        dbHandler.listFeedback()
+        # Redirect to the feedback page after submission
+        return redirect("/success.html")
+    else:
+        dbHandler.listFeedback()
+        return render_template("/success.html", state=True, value="Back")
+    
+@app.after_request
+def add_header(response):
+    # Disable caching
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "-1"
+    response.headers["Set-Cookie"] = "Secure; HttpOnly; SameSite=Strict"
+    return response
 
-        # Check login credentials
-        isLoggedIn = dbHandler.retrieveUsers(username, password, email)
-        if isLoggedIn:
-            # Store user information in the session
-            session["username"] = username
-            session["email"] = email
-            dbHandler.listFeedback()
-            return render_template("/success.html", value=username, state=True)
-        else:
-            # Generic error message for invalid login
-            error_message = "Invalid username, password, or email. Please try again."
-            return render_template("/index.html", error=error_message)
+@app.route("/set_cookie")
+def set_cookie():
+    response = redirect("/")
+    response.set_cookie("example_cookie", "cookie_value", max_age=60*60*24)  # Expires in 1 day
+    return response
+
+@app.route("/get_cookie")
+def get_cookie():
+    cookie_value = request.cookies.get("example_cookie")
+    return f"Cookie Value: {cookie_value}"
+
 
 @app.route("/signup.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def signup():
@@ -65,26 +80,6 @@ def signup():
         dbHandler.insertUser(username, password, dob, email)
         return render_template("/index.html")
     
-@app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-def addFeedback():
-    if "username" not in session:
-        return redirect("/")  # Redirect to login if not logged in
-
-    if request.method == "POST":
-        feedback = request.form["feedback"]
-        # Validate feedback
-        if len(feedback) > 500:
-            return "Invalid feedback", 400
-        dbHandler.insertFeedback(feedback, session["username"])
-
-    feedback_list = dbHandler.listFeedback()  # Get the feedback data
-    return render_template("/success.html", state=True, value=session["username"], feedback_list=feedback_list)
-    
-@app.route("/logout")
-def logout():
-    session.clear()  # Clear the session
-    return redirect("/")  # Redirect to the login page
-    
 def is_valid_password(password):
     # Regex explanation:
     # ^(?=.*[a-z])       -> At least one lowercase letter
@@ -94,13 +89,36 @@ def is_valid_password(password):
     regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d.*\d.*\d.*\d)[A-Za-z\d]{12,32}$"
     return re.match(regex, password) is not None
 
-@app.after_request
-def add_header(response):
-    # Disable caching
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "-1"
-    return response
+@app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
+@app.route("/", methods=["POST", "GET"])
+def home():
+    if request.method == "GET":
+        # Check if the user is already logged in
+        if "username" in session:
+            return redirect("/success.html")
+        return render_template("/index.html", state=False)
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        email = request.form["email"]
+
+        # Check login credentials
+        isLoggedIn = dbHandler.retrieveUsers(username, password, email)
+        if isLoggedIn:
+            # Store user information in the session
+            session["username"] = username
+            session["email"] = email
+            return redirect("/success.html")
+        else:
+            # Generic error message for invalid login
+            error_message = "Invalid username, password, or email. Please try again."
+            return render_template("/index.html", error=error_message, state=False)
+
+@app.route("/logout", methods=["POST", "GET"])
+def logout():
+    # Clear the session
+    session.clear()
+    return redirect("/")
 
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
