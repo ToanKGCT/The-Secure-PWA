@@ -1,9 +1,13 @@
 from flask import Flask, render_template, request, redirect, session
+from flask_wtf.csrf import CSRFProtect
 import user_management as dbHandler
 import re
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
+
+# Enable CSRF protection
+csrf = CSRFProtect(app)
 
 @app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 @app.route("/", methods=["POST", "GET"])
@@ -71,13 +75,10 @@ def addFeedback():
         # Validate feedback
         if len(feedback) > 500:
             return "Invalid feedback", 400
-        dbHandler.insertFeedback(feedback)
-        dbHandler.listFeedback()
-        # Redirect to the feedback page after submission
-        return redirect("/success.html")
-    else:
-        dbHandler.listFeedback()
-        return render_template("/success.html", state=True, value=session["username"])
+        dbHandler.insertFeedback(feedback, session["username"])
+
+    feedback_list = dbHandler.listFeedback()  # Get the feedback data
+    return render_template("/success.html", state=True, value=session["username"], feedback_list=feedback_list)
     
 @app.route("/logout")
 def logout():
@@ -100,11 +101,6 @@ def add_header(response):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "-1"
     return response
-
-@app.route("/2factorauthentificationgate.html")
-def skibidi():
-    return render_template("2factorauthentificationgate.html")
-
 
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
