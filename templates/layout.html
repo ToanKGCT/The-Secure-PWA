@@ -56,12 +56,10 @@
             <img src="static/images/logo.svg" alt="The unsecure website logo." />
             <h1>The Unsecure PWA</h1>
             <ul class="topnav">
-                {% if state %}
-                    <!-- Show Feedback and Logout when logged in -->
+                {% if session.get('username') %}
                     <li><a href="/success.html">Feedback</a></li>
-                    <li><a href="#" onclick="showLogoutModal()">Logout</a></li>
+                    <li><a href="javascript:void(0);" onclick="showLogoutModal()">Logout</a></li>
                 {% else %}
-                    <!-- Show Home and Signup when not logged in -->
                     <li><a href="/">Home</a></li>
                     <li><a href="/signup.html">Signup</a></li>
                 {% endif %}
@@ -94,10 +92,11 @@
             document.getElementById("logout-modal").style.display = "none";
         }
 
-        // Confirm logout and redirect to the home page
+        // Confirm logout and redirect to the logout route
         function confirmLogout() {
-            window.location.href = "/"; // Redirect to the home page (logout)
+            window.location.href = "/logout"; // Redirect to the logout route
         }
+        // Close the modal when clicking outside of it
     </script>
     </main>
    </body>

@@ -1,39 +1,36 @@
-from flask import Flask
-from flask import render_template
-from flask import request
-from flask import redirect
+from flask import Flask, render_template, request, redirect, session
 import user_management as dbHandler
 import re
 
 app = Flask(__name__)
+app.secret_key = "your_secret_key"
 
-@app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-def addFeedback():
+@app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
+@app.route("/", methods=["POST", "GET"])
+def home():
+    if request.method == "GET":
+        # Check if the user is already logged in
+        if "username" in session:
+            dbHandler.listFeedback()
+            return render_template("/success.html", value=session["username"], state=True)
+        return render_template("/index.html")
     if request.method == "POST":
-        feedback = request.form["feedback"]
-        # Validate feedback
-        if len(feedback) > 500:
-            return "Invalid feedback", 400
-        dbHandler.insertFeedback(feedback)
-        dbHandler.listFeedback()
-        # Redirect to the feedback page after submission
-        return redirect("/success.html")
-    else:
-        dbHandler.listFeedback()
-        return render_template("/success.html", state=True, value="Back")
-    
-@app.after_request
-def add_header(response):
-    # Disable caching
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "-1"
-    return response
+        username = request.form["username"]
+        password = request.form["password"]
+        email = request.form["email"]
 
-@app.route("/2factorauthentificationgate.html")
-def skibidi():
-    return render_template("2factorauthentificationgate.html")
-
+        # Check login credentials
+        isLoggedIn = dbHandler.retrieveUsers(username, password, email)
+        if isLoggedIn:
+            # Store user information in the session
+            session["username"] = username
+            session["email"] = email
+            dbHandler.listFeedback()
+            return render_template("/success.html", value=username, state=True)
+        else:
+            # Generic error message for invalid login
+            error_message = "Invalid username, password, or email. Please try again."
+            return render_template("/index.html", error=error_message)
 
 @app.route("/signup.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def signup():
@@ -64,6 +61,29 @@ def signup():
         dbHandler.insertUser(username, password, dob, email)
         return render_template("/index.html")
     
+@app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
+def addFeedback():
+    if "username" not in session:
+        return redirect("/")  # Redirect to login if not logged in
+
+    if request.method == "POST":
+        feedback = request.form["feedback"]
+        # Validate feedback
+        if len(feedback) > 500:
+            return "Invalid feedback", 400
+        dbHandler.insertFeedback(feedback)
+        dbHandler.listFeedback()
+        # Redirect to the feedback page after submission
+        return redirect("/success.html")
+    else:
+        dbHandler.listFeedback()
+        return render_template("/success.html", state=True, value=session["username"])
+    
+@app.route("/logout")
+def logout():
+    session.clear()  # Clear the session
+    return redirect("/")  # Redirect to the login page
+    
 def is_valid_password(password):
     # Regex explanation:
     # ^(?=.*[a-z])       -> At least one lowercase letter
@@ -73,25 +93,17 @@ def is_valid_password(password):
     regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d.*\d.*\d.*\d)[A-Za-z\d]{12,32}$"
     return re.match(regex, password) is not None
 
-@app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-@app.route("/", methods=["POST", "GET"])
-def home():
-    if request.method == "GET":
-        return render_template("/index.html")
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        email = request.form["email"]
+@app.after_request
+def add_header(response):
+    # Disable caching
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "-1"
+    return response
 
-        # Check login credentials
-        isLoggedIn = dbHandler.retrieveUsers(username, password, email)
-        if isLoggedIn:
-            dbHandler.listFeedback()
-            return render_template("/success.html", value=username, state=isLoggedIn)
-        else:
-            # Generic error message for invalid login
-            error_message = "Invalid username, password, or email. Please try again."
-            return render_template("/index.html", error=error_message)
+@app.route("/2factorauthentificationgate.html")
+def skibidi():
+    return render_template("2factorauthentificationgate.html")
 
 
 if __name__ == "__main__":
