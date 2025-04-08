@@ -2,8 +2,37 @@ import sqlite3 as sql
 import time
 import random
 import html 
+import pyotp
 import bcrypt
 #     # ^(?=.*[a-z]) - At least one lowercase letter
+
+
+
+def enable2FA(username, totp_code):
+    con = sql.connect("database_files/database.db")
+    cur = con.cursor()
+
+    # Retrieve the user's 2FA secret
+    cur.execute("SELECT two_factor_secret FROM users WHERE username = ?", (username,))
+    user = cur.fetchone()
+
+    if not user:
+        con.close()
+        return False
+
+    two_factor_secret = user[0]
+    totp = pyotp.TOTP(two_factor_secret)
+
+    # Verify the TOTP code
+    if totp.verify(totp_code):
+        # Mark 2FA as enabled in the database
+        cur.execute("UPDATE users SET is_2fa_enabled = 1 WHERE username = ?", (username,))
+        con.commit()
+        con.close()
+        return True
+
+    con.close()
+    return False
 
 def insertUser(username, password, DoB, email):
     con = sql.connect("database_files/database.db")
@@ -12,15 +41,43 @@ def insertUser(username, password, DoB, email):
     # Hash the password using bcrypt
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
+    # Generate a 2FA secret
+    two_factor_secret = pyotp.random_base32()
+
     cur.execute(
-        "INSERT INTO users (username, password, dateOfBirth, email) VALUES (?, ?, ?, ?)",
-        (username, hashed_password, DoB, email),
+        "INSERT INTO users (username, password, dateOfBirth, email, two_factor_secret, is_2fa_enabled) VALUES (?, ?, ?, ?, ?, ?)",
+        (username, hashed_password, DoB, email, two_factor_secret, 0),
     )
     con.commit()
     con.close()
 
+def enable2FA(username, totp_code):
+    con = sql.connect("database_files/database.db")
+    cur = con.cursor()
 
-def retrieveUsers(username, password, email):
+    # Retrieve the user's 2FA secret
+    cur.execute("SELECT two_factor_secret FROM users WHERE username = ?", (username,))
+    user = cur.fetchone()
+
+    if not user:
+        con.close()
+        return False
+
+    two_factor_secret = user[0]
+    totp = pyotp.TOTP(two_factor_secret)
+
+    # Verify the TOTP code
+    if totp.verify(totp_code):
+        # Mark 2FA as enabled in the database
+        cur.execute("UPDATE users SET is_2fa_enabled = 1 WHERE username = ?", (username,))
+        con.commit()
+        con.close()
+        return True
+
+    con.close()
+    return False
+
+def retrieveUsers(username, password, email, totp_code):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
 
@@ -33,26 +90,23 @@ def retrieveUsers(username, password, email):
     if user:
         # Verify the hashed password
         stored_password = user[2]  # Assuming the password is in the second column
+        two_factor_secret = user[4]  # Assuming the 2FA secret is in the fifth column
         if bcrypt.checkpw(password.encode('utf-8'), stored_password):
-            # Log visitor count
-            with open("visitor_log.txt", "r") as file:
-                number = int(file.read().strip())
-                number += 1
-            with open("visitor_log.txt", "w") as file:
-                file.write(str(number))
-            # Simulate response time
-            time.sleep(random.randint(80, 90) / 1000)
-            con.close()
-            return True
+            # Verify the TOTP code
+            totp = pyotp.TOTP(two_factor_secret)
+            if totp.verify(totp_code):
+                con.close()
+                return True
 
     con.close()
     return False
 
 
-def insertFeedback(feedback):
+def insertFeedback(feedback, username):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
-    cur.execute("INSERT INTO feedback (feedback) VALUES (?)", (feedback,))
+    sanitized_feedback = html.escape(feedback)  # Escape harmful content
+    cur.execute("INSERT INTO feedback (feedback, username) VALUES (?, ?)", (sanitized_feedback, username))
     con.commit()
     con.close()
 
@@ -61,12 +115,11 @@ def listFeedback():
     cur = con.cursor()
     data = cur.execute("SELECT * FROM feedback").fetchall()
     con.close()
-    with open("templates/partials/success_feedback.html", "w") as f:
-        for row in data:
-            escaped_feedback = html.escape(row[1])  # Escape feedback content
-            f.write("<p>\n")
-            f.write(f"{escaped_feedback}\n")
-            f.write("</p>\n")
+    feedback_list = []
+    for row in data:
+        escaped_feedback = html.escape(row[1])  # Escape feedback content
+        feedback_list.append(escaped_feedback)
+    return feedback_list
 
 def isUserExists(username, email):
     con = sql.connect("database_files/database.db")
@@ -76,3 +129,4 @@ def isUserExists(username, email):
     user = cur.fetchone()
     con.close()
     return user is not None
+

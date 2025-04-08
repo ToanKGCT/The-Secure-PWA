@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="setup-2fa-container">
+    <h1>Setup Two-Factor Authentication</h1>
+    <p>Scan the QR code below with your Google Authenticator app:</p>
+    <div class="qr-code-wrapper">
+        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code">
+    </div>
+    <form action="/setup-2fa/{{ username }}" method="POST" class="box">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="input__wrapper">
+            <input type="text" name="totp_code" id="totp_code" placeholder="Enter the code from the app" class="input__field" required>
+        </div>
+        <div class="input__wrapper">
+            <button type="submit" class="btn">Verify</button>
+        </div>
+    </form>
+    {% if error %}
+        <p class="error-message">{{ error }}</p>
+    {% endif %}
+</div>
+{% endblock %}

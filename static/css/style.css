@@ -17,6 +17,38 @@ main {
     margin: auto;
     padding: 0.5rem;
     text-align: center;
+
+/* Setup 2FA Page Styles */
+.setup-2fa-container {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-wrapper {
+    margin: 20px 0;
+}
+
+.qr-code-wrapper img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #fff;
+}
+
+.error-message {
+    color: red;
+    font-size: 0.9em;
+    margin-top: 10px;
+}
+
 }
 nav {
     display: flex;

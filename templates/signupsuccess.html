@@ -1,0 +1,9 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h1>Signup Successful!</h1>
+<p>Your account has been created. Would you like to enable Two-Factor Authentication (2FA) for added security?</p>
+<div class="input__wrapper">
+    <a href="/setup-2fa/{{ username }}" class="btn">Enable 2FA</a>
+    <a href="/" class="btn">Skip for Now</a>
+</div>
+{% endblock %}
