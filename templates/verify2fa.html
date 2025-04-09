@@ -1,0 +1,16 @@
+{% extends 'layout.html' %}
+{% block content %}
+<h1>Verify Two-Factor Authentication</h1>
+<p>Enter the code from your Google Authenticator app:</p>
+<form action="/verify2fa/{{ username }}" method="POST" class="box">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="input__wrapper">
+        <input type="text" name="totp_code" id="totp_code" placeholder="Enter the code" class="input__field" required>
+    </div>
+    <div class="input__wrapper">
+        <button type="submit" class="btn">Verify</button>
+    </div>
+</form>{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
+{% endblock %}

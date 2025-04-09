@@ -103,8 +103,8 @@ def verify2fa(username):
             return redirect("/success.html")
         else:
             error_message = "Invalid 2FA code. Please try again."
-            return render_template("verify2fa.html", error=error_message, username=username)
-
+            return render_template("verify2fa.html", error=error_message, username=username) 
+               
 @app.route("/signup.html", methods=["POST", "GET"])
 def signup():
     if request.method == "GET":
